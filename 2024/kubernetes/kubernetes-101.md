@@ -1,0 +1,35 @@
+[Part 1](https://dev.to/leandronsp/kubernetes-101-part-i-the-fundamentals-23a1):
+- Run everything in containers
+- Example:
+  - Max availability and scalability requirements
+  - Functional requirement: App with self-healing (cannot be down)
+- 1 Machine: Control Pane, other machines: Nodes -> contains all managed containers
+- Cluster state -> all running containers
+- Desired state -> we declare it, Kubernetes will achieve it (cam be cumbersome, error prone). Soln? kubectl (CLI) (kubectl run nginx image=nginx)
+- Everything in the cluster are objects. Pod: smallest object unit
+- Pods can be containers or can contain multiple containers
+- Architecture flow of creating objects:
+  - Pod scheduling and state updates
+    - Control Pane scheduler looks out for the next available node and schedules the object/pod to it
+    - Node Kubelet admits objects coming from the scheduler and creates the object using container runtime (eg. Docker) in the node
+    - Uses etcd (in Control Pane) to persist and keep the current state
+- How to communicate b/w pods (eg. server and client)? Container and pods are isolated
+  - execute commands in a running pod? kubectl exec server -- curl localhost
+  - But still can't request b/w pods.
+  - Each pods have an internal IP in the cluster (kubectl describe pod server | grep IP) -> IP 172.17.0.6
+  - Can communicate via IP: kubectl exec client -- curl 172.17.0.6
+  - If pods are changed (eg. during deploy), no guarantee that the new pod will get the same IP again!
+  - Need pod discovery -> declare special object (called Service) in Kubernetes that will give a name to a given pod. 
+  - Use names (Hostnames?) instead of IPs to reach the pods
+- Control Manager
+  - Part of Control Pane
+  - Responsible to receive a request for special objects like Services and expose them via service discovery.
+  - `kubectl expose pod server --port=80 --target-port=80`
+  - Now can reach server pod by its name: `kubectl exec client -- curl server`
+  - Flow -> creation of the Service object -> Controller Manager exposes the Pod via service discovery -> 
+    -> routes to kube-proxy running inside the node -> create service object for the pod -> persist state in etcd
+- Cloud Controller
+  - Part of Control Pane
+  - Responsible for receiving requests to create objects and interacting with the underlying cloud provider if needed
+  - Eg. Serviceobject of type LoadBalancer in AWS/GCP/AZure
+  
